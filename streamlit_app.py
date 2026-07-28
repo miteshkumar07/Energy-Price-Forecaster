@@ -101,8 +101,8 @@ if not df.empty:
             if run_hours > len(constrained_df):
                 st.error(f"⚠️ Error: You requested {run_hours} hours of run time, but the shift window is only {len(constrained_df)} hours long!")
             else:
-                cont_sched, _ = optimize_continuous(constrained_df, run_hours)
-                int_sched, _ = optimize_interruptible(constrained_df, run_hours)
+                cont_sched, _ = optimize_continuous(constrained_df, run_hours, price_col='Industrial_Final_Price')
+                int_sched, _ = optimize_interruptible(constrained_df, run_hours, price_col='Industrial_Final_Price')
                 
                 power_mw = power_kw / 1000.0
                 # Using the actual industrial rates for financial estimation
