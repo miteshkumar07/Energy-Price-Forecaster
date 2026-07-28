@@ -12,8 +12,60 @@ sys.path.append(os.path.abspath('src'))
 from optimizer import optimize_continuous, optimize_interruptible
 
 st.set_page_config(page_title="AI Energy Optimizer", page_icon="⚡", layout="wide")
-st.title("⚡ Energy Price Forecaster")
-st.markdown("Empowering smart energy decisions with advanced machine learning. Forecast European Day-Ahead electricity prices, mitigate market risks, and optimize operational schedules with precise pricing models tailored for both industrial facilities and residential consumers")
+
+st.markdown("""
+<style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap');
+    
+    html, body, [class*="css"] {
+        font-family: 'Inter', sans-serif;
+    }
+    
+    /* Gradient Title */
+    .main-title {
+        background: linear-gradient(90deg, #FDBB2D 0%, #22C1C3 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        font-size: 3.8rem !important;
+        font-weight: 800;
+        margin-bottom: 0px;
+        padding-bottom: 0px;
+    }
+    
+    /* Custom Button */
+    .stButton > button {
+        background: linear-gradient(90deg, #FF416C 0%, #FF4B2B 100%);
+        color: white;
+        border-radius: 8px;
+        border: none;
+        box-shadow: 0 4px 15px rgba(255, 75, 43, 0.4);
+        font-weight: 600;
+        transition: all 0.3s ease;
+        padding: 0.5rem 2rem;
+    }
+    .stButton > button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(255, 75, 43, 0.6);
+        color: white;
+    }
+    
+    /* Metrics */
+    [data-testid="stMetricValue"] {
+        font-size: 2.5rem;
+        font-weight: 800;
+        color: #22C1C3;
+    }
+    
+    /* Sidebar */
+    [data-testid="stSidebar"] {
+        background-color: #1e1e24;
+        border-right: 1px solid rgba(255,255,255,0.05);
+    }
+</style>
+""", unsafe_allow_html=True)
+
+st.markdown('<h1 class="main-title">⚡ Energy Price Forecaster</h1>', unsafe_allow_html=True)
+st.markdown("<p style='font-size: 1.1rem; color: #a3a8b8; margin-bottom: 2rem;'>Empowering smart energy decisions with advanced machine learning. Forecast European Day-Ahead electricity prices, mitigate market risks, and optimize operational schedules with precise pricing models tailored for both industrial facilities and residential consumers.</p>", unsafe_allow_html=True)
 
 @st.cache_resource
 def init_connection():
@@ -148,18 +200,21 @@ if not df.empty:
                 cont_cost = power_mw * cont_sched['Industrial_Final_Price'].sum()
                 int_cost = power_mw * int_sched['Industrial_Final_Price'].sum()
 
-                st.success("Optimization Complete! Financial estimates based on AI predicted industrial rates.")
+                st.success("✅ **Optimization Complete!** Financial estimates based on AI predicted industrial rates.")
+                st.markdown("<br>", unsafe_allow_html=True)
                 
                 res_col1, res_col2 = st.columns(2)
                 with res_col1:
-                    st.info("🔥 **OPTION A: Continuous Run**")
-                    st.write(f"**Schedule:** {cont_sched['Datetime'].iloc[0].strftime('%H:%M')} to {cont_sched['Datetime'].iloc[-1].strftime('%H:%M')}")
-                    st.write(f"**Estimated Cost:** €{cont_cost:.2f}")
+                    with st.container(border=True):
+                        st.markdown("### 🔥 OPTION A: Continuous Run")
+                        st.markdown(f"**Optimal Window:** `{cont_sched['Datetime'].iloc[0].strftime('%H:%M')} - {cont_sched['Datetime'].iloc[-1].strftime('%H:%M')}`")
+                        st.metric(label="Estimated Cost", value=f"€{cont_cost:.2f}")
                     
                 with res_col2:
-                    st.info("⚡ **OPTION B: Interruptible Run**")
-                    st.write(f"**Scheduled Hours:** {', '.join(int_sched['Datetime'].dt.strftime('%H:%M').tolist())}")
-                    st.write(f"**Estimated Cost:** €{int_cost:.2f}")
+                    with st.container(border=True):
+                        st.markdown("### ⚡ OPTION B: Interruptible Run")
+                        st.markdown(f"**Scheduled Hours:** `{', '.join(int_sched['Datetime'].dt.strftime('%H:%M').tolist())}`")
+                        st.metric(label="Estimated Cost", value=f"€{int_cost:.2f}")
 
     with tab2:
         st.subheader("📊 48-Hour Final Cost Forecast vs Actuals")
@@ -181,7 +236,16 @@ if not df.empty:
             fig.add_trace(go.Scatter(x=df['datetime_berlin'], y=df['Actual_Industrial_Price'], mode='lines', line=dict(color='blue', width=2), name=f'Actual Industrial ({selected_region})', hovertemplate='%{y:.2f} €/MWh'))
             fig.add_trace(go.Scatter(x=df['datetime_berlin'], y=df['Actual_Residential_Price'], mode='lines', line=dict(color='green', width=2), name=f'Actual Residential ({selected_region})', hovertemplate='%{y:.2f} €/MWh'))
 
-        fig.update_layout(hovermode="x unified", yaxis_title="Price (€/MWh)", xaxis_title="Time", margin=dict(t=200))
+        fig.update_layout(
+            hovermode="x unified", 
+            yaxis_title="Price (€/MWh)", 
+            xaxis_title="Time", 
+            template="plotly_dark",
+            plot_bgcolor='rgba(0,0,0,0)',
+            paper_bgcolor='rgba(0,0,0,0)',
+            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+            margin=dict(t=60)
+        )
         st.plotly_chart(fig, width='stretch')
 
     with tab3:
