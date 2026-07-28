@@ -10,3 +10,4 @@ shap
 matplotlib
 plotly
 holidays
+python-dotenv
