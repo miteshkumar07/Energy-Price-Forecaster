@@ -12,8 +12,8 @@ sys.path.append(os.path.abspath('src'))
 from optimizer import optimize_continuous, optimize_interruptible
 
 st.set_page_config(page_title="AI Energy Optimizer", page_icon="⚡", layout="wide")
-st.title("⚡ Heavy Machinery Energy Optimizer")
-st.markdown("Use machine learning to forecast Day-Ahead electricity prices and find the cheapest hours to run factory equipment.")
+st.title("⚡ Energy Price Forecaster")
+st.markdown("Empowering smart energy decisions with advanced machine learning. Forecast European Day-Ahead electricity prices, mitigate market risks, and optimize operational schedules with precise pricing models tailored for both industrial facilities and residential consumers")
 
 @st.cache_resource
 def init_connection():
@@ -65,6 +65,45 @@ if not df.empty:
     ind_grid = region_data["ind_grid"]
     res_grid = region_data["res_grid"]
     concession = region_data["concession"]
+    st.sidebar.markdown("---")
+    st.sidebar.markdown("### 🌐 Connect with Me")
+
+    st.sidebar.markdown("""
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .social-container {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        .social-link {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            text-decoration: none !important;
+            font-weight: 500;
+            font-size: 15px;
+        }
+        .social-link:hover {
+            opacity: 0.8;
+        }
+        .fa-linkedin { color: #0A66C2; }
+        .fa-github { color: inherit; }
+        .fa-globe { color: #00BFFF; }
+    </style>
+    <div class="social-container">
+        <a class="social-link" href="https://www.linkedin.com/in/mitesh-kumar0707/" target="_blank">
+            <i class="fab fa-linkedin fa-lg"></i> LinkedIn
+        </a>
+        <a class="social-link" href="https://github.com/miteshkumar07" target="_blank">
+            <i class="fab fa-github fa-lg"></i> GitHub
+        </a>
+        <a class="social-link" href="https://miteshkumar.com/" target="_blank">
+            <i class="fas fa-globe fa-lg"></i> Portfolio
+        </a>
+    </div>
+    """, unsafe_allow_html=True)
 
     # ==========================================
     #  FINAL PRICING CALCULATIONS
@@ -87,12 +126,12 @@ if not df.empty:
         
         col1, col2 = st.columns(2)
         with col1:
-            run_hours = st.number_input("Required Run Time (Hours):", min_value=1, max_value=24, value=8, step=1)
+            run_hours = st.number_input("Required Run Time (Hours):", min_value=1, max_value=24, value=10, step=1)
         with col2:
             power_kw = st.number_input("Machine Power (kW):", min_value=10, max_value=10000, value=500, step=50)
 
         st.markdown("#### 👷 Operational Constraints")
-        shift_start, shift_end = st.slider("Select Legal Shift Hours (When can the machine run?)", min_value=0, max_value=23, value=(8, 18), format="%d:00")
+        shift_start, shift_end = st.slider("Select Legal Shift Hours (When can the machine run?)", min_value=0, max_value=23, value=(0, 23), format="%d:00")
 
         if st.button("Run Optimizer", type="primary"):
             shift_mask = (tomorrow_df['Datetime'].dt.hour >= shift_start) & (tomorrow_df['Datetime'].dt.hour <= shift_end)
@@ -142,7 +181,7 @@ if not df.empty:
             fig.add_trace(go.Scatter(x=df['datetime_berlin'], y=df['Actual_Industrial_Price'], mode='lines', line=dict(color='blue', width=2), name=f'Actual Industrial ({selected_region})', hovertemplate='%{y:.2f} €/MWh'))
             fig.add_trace(go.Scatter(x=df['datetime_berlin'], y=df['Actual_Residential_Price'], mode='lines', line=dict(color='green', width=2), name=f'Actual Residential ({selected_region})', hovertemplate='%{y:.2f} €/MWh'))
 
-        fig.update_layout(hovermode="x unified", yaxis_title="Price (€/MWh)", xaxis_title="Time")
+        fig.update_layout(hovermode="x unified", yaxis_title="Price (€/MWh)", xaxis_title="Time", margin=dict(t=200))
         st.plotly_chart(fig, width='stretch')
 
     with tab3:
@@ -160,7 +199,7 @@ if not df.empty:
                 try:
                     blob_waterfall = bucket.blob("shap_waterfall.png")
                     waterfall_bytes = blob_waterfall.download_as_bytes()
-                    st.image(waterfall_bytes, caption="Real-time Driver Analysis (SHAP Waterfall)", use_container_width=True)
+                    st.image(waterfall_bytes, caption="Real-time Driver Analysis (SHAP Waterfall)", width='content')
                 except NotFound:
                     st.info(" SHAP Waterfall analysis visual is generating...")
             
@@ -169,7 +208,7 @@ if not df.empty:
                 try:
                     blob_summary = bucket.blob("shap_summary.png")
                     summary_bytes = blob_summary.download_as_bytes()
-                    st.image(summary_bytes, caption="Macro Feature Importance (Last 24 Hours)", use_container_width=True)
+                    st.image(summary_bytes, caption="Macro Feature Importance (Last 24 Hours)", width='content')
                 except NotFound:
                     st.info(" SHAP Summary analysis visual is generating...")
                     

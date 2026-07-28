@@ -75,7 +75,10 @@ def run_walk_forward_backtest(days_to_test=90):
     
     results_df['Error (€)'] = results_df['Predicted_Price_p50'] - results_df['Actual_Price']
     results_df['Abs_Error (€)'] = results_df['Error (€)'].abs()
-    results_df = results_df.round(2)
+
+    # Rounds only the numeric price and error columns
+    numeric_cols = ['Actual_Price', 'Predicted_Price_p10', 'Predicted_Price_p50', 'Predicted_Price_p90', 'Error (€)', 'Abs_Error (€)']
+    results_df[numeric_cols] = results_df[numeric_cols].round(2)
     
     print(f"\n FINAL 90-DAY WALK-FORWARD MAE: {results_df['Abs_Error (€)'].mean():.2f} €/MWh\n")
 
