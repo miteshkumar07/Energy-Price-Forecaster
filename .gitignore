@@ -1,0 +1,18 @@
+data/
+__pycache__/
+.pytest_cache/
+.DS_Store
+.venv/
+venv/
+env/
+.env
+visualizations/
+src/compare_models.py
+.vscode/
+extend.txt
+image copy.png
+image.png
+path.md
+123README.md
+tryy.ipynb
+wipe_db.py

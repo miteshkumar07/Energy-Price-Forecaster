@@ -1,0 +1,36 @@
+name: Daily Energy Forecast Pipeline
+
+on:
+  schedule:
+    # Runs at 06:00 UTC (08:00 AM CEST) AND 12:00 UTC (14:00 / 2:00 PM CEST)
+    - cron: '0 6,12 * * *'
+  workflow_dispatch: # This allows you to manually click a "Run" button in GitHub
+
+jobs:
+  run-pipeline:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip' # Caches dependencies to make the daily run much faster
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run ETL & Inference Pipeline
+        env:
+          DB_HOST: ${{ secrets.DB_HOST }}
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+        run: |
+          echo "🚀 Starting automated daily pipeline..."
+          python src/etl.py
+          python src/inference.py
+          echo "✅ Daily pipeline finished successfully!"

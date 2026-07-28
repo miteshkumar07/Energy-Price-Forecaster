@@ -1,0 +1,111 @@
+from sklearn.model_selection import train_test_split
+from features import extract_features
+import pandas as pd
+from sklearn.metrics import mean_absolute_error, r2_score
+import os
+import lightgbm as lgb
+import matplotlib.pyplot as plt
+import shap
+from db_utils import load_table
+
+def run_training_pipeline():
+    raw_df = load_table('historical_energy_data') 
+    feat_extraced_df = extract_features(raw_df)
+    cleaned_feat_df = feat_extraced_df.sort_values('datetime_berlin').reset_index(drop=True)
+    
+    # DWD SPATIAL WEATHER FEATURES
+    feature_cols = [
+       'north_wind_wind_speed_100m', 'north_wind_wind_direction_100m', 'north_wind_wind_speed_10m',
+       'south_solar_shortwave_radiation', 'south_solar_direct_normal_irradiance', 'south_solar_diffuse_radiation',
+       'south_solar_cloud_cover', 'south_solar_cloud_cover_low',
+       'ind_demand_apparent_temperature', 'ind_demand_temperature_2m', 'ind_demand_relative_humidity_2m',
+       'HDD', 'CDD',
+       'Natural_Gas_Price', 'Carbon_Proxy_Price', 'Oil_Proxy_Price',
+       'Day', 'Hour', 'Weekday', 'Is_Weekend', 'Is_Holiday', 
+       'hour_sin', 'hour_cos', 'weekday_sin', 'weekday_cos',
+       'price_lag_24', 'price_lag_48', 'price_lag_168',
+       'price_rolling_mean_24', 'price_rolling_max_24', 'price_rolling_min_24'
+    ]
+    target_col = 'Price (€/MWh)'
+    
+    cleaned_feat_df = cleaned_feat_df.dropna(subset=[target_col]).reset_index(drop=True)
+    X_train, X_test, y_train, y_test = train_test_split(cleaned_feat_df[feature_cols], cleaned_feat_df[target_col], test_size=0.25, shuffle=False)
+    
+    print(f"Training set rows: {len(X_train)}")
+    print(f"Testing set rows: {len(X_test)}")
+
+    #### Baseline #########
+    y_pred_baseline = X_test['price_lag_24']
+    baseline_mae = mean_absolute_error(y_test, y_pred_baseline)
+    print(f"Naive Persistence Baseline MAE: {baseline_mae:.2f} €/MWh")
+    #######################
+
+    ##### LightGBM #########
+    # 10% condidence bounds
+    model_10 = lgb.LGBMRegressor(
+        objective='quantile', alpha=0.10, n_estimators=1000, learning_rate=0.02, num_leaves=32, min_child_samples=100,
+        max_depth=6, subsample=0.7, colsample_bytree=0.8, random_state=42, n_jobs=-1, verbose=-1
+    )
+    # 50% confidence bounds
+    model_50 = lgb.LGBMRegressor(
+        objective='quantile', alpha=0.50, n_estimators=1000, learning_rate=0.02, num_leaves=32, min_child_samples=100,
+        max_depth=6, subsample=0.7, colsample_bytree=0.8, random_state=42, n_jobs=-1, verbose=-1
+    )
+    # 90% confidence bounds
+    model_90 = lgb.LGBMRegressor(
+        objective='quantile', alpha=0.90, n_estimators=1000, learning_rate=0.02, num_leaves=32, min_child_samples=100,
+        max_depth=6, subsample=0.7, colsample_bytree=0.8, random_state=42, n_jobs=-1, verbose=-1
+    )
+
+    model_10.fit(X_train, y_train, eval_X=X_test, eval_y=y_test, callbacks=[lgb.early_stopping(50, verbose=False)])
+    model_50.fit(X_train, y_train, eval_X=X_test, eval_y=y_test, callbacks=[lgb.early_stopping(50, verbose=False)])
+    model_90.fit(X_train, y_train, eval_X=X_test, eval_y=y_test, callbacks=[lgb.early_stopping(50, verbose=False)])
+
+    # ==========================================
+    #  EXPLAINABLE AI (SHAP) INTEGRATION
+    # ==========================================
+    print("\n Generating SHAP Explainable AI visualizations...")
+    os.makedirs("visualizations", exist_ok=True)
+    
+    explainer = shap.TreeExplainer(model_50)
+    recent_X = X_test.tail(24)
+    shap_values = explainer(recent_X)
+
+    plt.figure(figsize=(10, 6))
+    shap.plots.waterfall(shap_values[-1], show=False) 
+    plt.title("SHAP Waterfall: Explanation for Latest Prediction")
+    plt.savefig("visualizations/shap_waterfall.png", bbox_inches='tight', dpi=300)
+    plt.close()
+
+    plt.figure(figsize=(10, 6))
+    shap.summary_plot(shap_values, recent_X, show=False)
+    plt.title("SHAP Summary: Feature Impact on Recent Prices")
+    plt.savefig("visualizations/shap_summary.png", bbox_inches='tight', dpi=300)
+    plt.close()
+    
+    print(" SHAP visualisations successfully saved to visualizations/")
+    
+    # Save Models & Performance Metrics
+    os.makedirs("models", exist_ok=True)
+    models = {10: model_10, 50: model_50, 90: model_90}
+    
+    for perc, model in models.items():
+        preds = model.predict(X_test)
+        mae = mean_absolute_error(y_test, preds)
+        r2 = r2_score(y_test, preds)
+        imp = baseline_mae - mae
+        print(f"\n--- LightGBM p{perc} Model ---")
+        print(f"R² Score: {r2:.4f}")
+        print(f"Model MAE: {mae:.2f} €/MWh (Improved by {imp:.2f} €/MWh)")
+        model.booster_.save_model(f"models/lightgbm_price_model_{perc}.json")
+        
+    importances_50 = pd.DataFrame({
+        'Feature': feature_cols,
+        'Importance': model_50.feature_importances_
+    }).sort_values(by='Importance', ascending=False)
+    
+    print("\n TOP 10 MOST IMPORTANT FEATURES (Median Model):")
+    print(importances_50.head(10).to_string(index=False))
+
+if __name__ == "__main__":
+    run_training_pipeline()

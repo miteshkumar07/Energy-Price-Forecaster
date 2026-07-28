@@ -1,0 +1,12 @@
+streamlit
+pandas
+requests
+yfinance
+pandera
+sqlalchemy
+psycopg2-binary
+lightgbm
+shap
+matplotlib
+plotly
+holidays
