@@ -7,6 +7,8 @@ import os
 import urllib.parse
 from sqlalchemy import create_engine
 from db_utils import load_table
+from google.cloud import storage
+import json
 
 def run_walk_forward_backtest(days_to_test=90):
     print(" Loading and extracting features...")
@@ -103,6 +105,19 @@ def run_walk_forward_backtest(days_to_test=90):
     plt.legend(loc='upper right')
     plt.grid(True, alpha=0.3)
     plt.savefig("visualizations/backtest_results.png", bbox_inches='tight', dpi=300)
+    bucket_name = "energy-visuals-mitesh"
+    
+    if "GCP_CREDENTIALS" in os.environ:
+        credentials_dict = json.loads(os.environ["GCP_CREDENTIALS"])
+        storage_client = storage.Client.from_service_account_info(credentials_dict)
+    else:
+        storage_client = storage.Client()
+        
+    bucket = storage_client.bucket(bucket_name)
+    blob = bucket.blob("backtest_results.png")
+    
+    blob.upload_from_filename("visualizations/backtest_results.png")
+    print(f" Successfully uploaded backtest_results.png to GCS bucket")
 
 if __name__ == "__main__":
     run_walk_forward_backtest(days_to_test=90)

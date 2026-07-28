@@ -11,3 +11,4 @@ matplotlib
 plotly
 holidays
 python-dotenv
+google-cloud-storage

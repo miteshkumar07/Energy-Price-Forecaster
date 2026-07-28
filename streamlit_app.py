@@ -5,6 +5,8 @@ import os
 import urllib.parse
 from sqlalchemy import create_engine
 import plotly.graph_objects as go
+from google.cloud import storage
+from google.api_core.exceptions import NotFound
 
 sys.path.append(os.path.abspath('src'))
 from optimizer import optimize_continuous, optimize_interruptible
@@ -146,9 +148,30 @@ if not df.empty:
     with tab3:
         st.subheader("🧠 Why is the AI predicting this?")
         st.markdown("Understanding the market drivers behind the AI's most recent forecast.")
+        bucket_name = "energy-visuals-mitesh"
         try:
-            st.image("visualizations/shap_waterfall.png", caption="Real-time Driver Analysis (SHAP Waterfall)", width='content')
-            st.divider()
-            st.image("visualizations/shap_summary.png", caption="Macro Feature Importance (Last 24 Hours)", width='content')
-        except FileNotFoundError:
-            st.warning("SHAP visualizations not found. The inference pipeline has not run yet.")
+            storage_client = storage.Client()
+            bucket = storage_client.bucket(bucket_name)
+            
+            col1, col2 = st.columns(2)
+            
+            # Image 1: SHAP Waterfall
+            with col1:
+                try:
+                    blob_waterfall = bucket.blob("shap_waterfall.png")
+                    waterfall_bytes = blob_waterfall.download_as_bytes()
+                    st.image(waterfall_bytes, caption="Real-time Driver Analysis (SHAP Waterfall)", use_container_width=True)
+                except NotFound:
+                    st.info(" SHAP Waterfall analysis visual is generating...")
+            
+            # Image 2: SHAP Summary / Feature Importance
+            with col2:
+                try:
+                    blob_summary = bucket.blob("shap_summary.png")
+                    summary_bytes = blob_summary.download_as_bytes()
+                    st.image(summary_bytes, caption="Macro Feature Importance (Last 24 Hours)", use_container_width=True)
+                except NotFound:
+                    st.info(" SHAP Summary analysis visual is generating...")
+                    
+        except Exception as e:
+            st.error(f"Could not connect to Cloud Storage: {e}")
