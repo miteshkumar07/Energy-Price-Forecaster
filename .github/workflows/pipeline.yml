@@ -33,6 +33,6 @@ jobs:
           GCP_CREDENTIALS: ${{ secrets.GCP_CREDENTIALS }}
         run: |
           echo "🚀 Starting automated daily pipeline..."
-          python src/etl.py
-          python src/inference.py
+          python -u src/etl.py
+          python -u src/inference.py
           echo "✅ Daily pipeline finished successfully!"

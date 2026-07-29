@@ -49,7 +49,7 @@ def fetch_dwd_spatial_weather(start_date, end_date):
             f"start_date={start_date}&end_date={today_str}&"
             f"hourly={vars_str}&timezone=Europe/Berlin"
         )
-        r_hist = requests.get(hist_url)
+        r_hist = requests.get(hist_url, timeout=15)
         r_hist.raise_for_status()
         data_hist = r_hist.json()['hourly']
         
@@ -64,7 +64,7 @@ def fetch_dwd_spatial_weather(start_date, end_date):
             f"start_date={tomorrow_str}&end_date={tomorrow_str}&"
             f"hourly={vars_str}&timezone=Europe/Berlin"
         )
-        r_live = requests.get(live_url)
+        r_live = requests.get(live_url, timeout=15)
         r_live.raise_for_status()
         data_live = r_live.json()['hourly']
         
@@ -135,14 +135,14 @@ def fetch_smard_actual_price(start_date, end_date):
     cache_buster = int(time.time())
     INDEX_URL = "https://www.smard.de/app/chart_data/4169/DE/index_hour.json"
     
-    response = requests.get(INDEX_URL)
+    response = requests.get(INDEX_URL, timeout=15)
     response.raise_for_status()
     timestamps = response.json()['timestamps'][-104:]
     series_data = []
     
     for week in timestamps:
         week_url = f"https://www.smard.de/app/chart_data/4169/DE/4169_DE_hour_{week}.json?n={cache_buster}"
-        week_response = requests.get(week_url)
+        week_response = requests.get(week_url, timeout=15)
         week_response.raise_for_status()
         series_data.extend(week_response.json()['series'])
         
