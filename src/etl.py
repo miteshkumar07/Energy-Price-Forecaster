@@ -10,6 +10,24 @@ import pandera.pandas as pa
 from pandera.pandas import Column, Check, DataFrameSchema
 from sqlalchemy import create_engine
 import time
+from urllib3.util.retry import Retry
+from requests.adapters import HTTPAdapter
+
+def get_retry_session():
+    """Configures a requests session that automatically retries failed connections."""
+    session = requests.Session()
+    # Retries 5 times, waiting 1s, 2s, 4s, 8s, 16s between attempts
+    retry = Retry(
+        total=5,
+        read=5,
+        connect=5,
+        backoff_factor=1,
+        status_forcelist=[429, 500, 502, 503, 504]
+    )
+    adapter = HTTPAdapter(max_retries=retry)
+    session.mount('http://', adapter)
+    session.mount('https://', adapter)
+    return session
 
 
 def fetch_dwd_spatial_weather(start_date, end_date):
@@ -40,6 +58,7 @@ def fetch_dwd_spatial_weather(start_date, end_date):
     tomorrow_str = (now_berlin + pd.Timedelta(days=1)).strftime('%Y-%m-%d')
     
     combined_hubs_df = None
+    session = get_retry_session()
     
     for hub_name, coords in hubs.items():
         # 1. Fetch Historical DWD Runs up to today
@@ -49,7 +68,7 @@ def fetch_dwd_spatial_weather(start_date, end_date):
             f"start_date={start_date}&end_date={today_str}&"
             f"hourly={vars_str}&timezone=Europe/Berlin"
         )
-        r_hist = requests.get(hist_url, timeout=15)
+        r_hist = session.get(hist_url, timeout=15)
         r_hist.raise_for_status()
         data_hist = r_hist.json()['hourly']
         
@@ -64,7 +83,7 @@ def fetch_dwd_spatial_weather(start_date, end_date):
             f"start_date={tomorrow_str}&end_date={tomorrow_str}&"
             f"hourly={vars_str}&timezone=Europe/Berlin"
         )
-        r_live = requests.get(live_url, timeout=15)
+        r_live = session.get(live_url, timeout=15)
         r_live.raise_for_status()
         data_live = r_live.json()['hourly']
         
@@ -135,14 +154,15 @@ def fetch_smard_actual_price(start_date, end_date):
     cache_buster = int(time.time())
     INDEX_URL = "https://www.smard.de/app/chart_data/4169/DE/index_hour.json"
     
-    response = requests.get(INDEX_URL, timeout=15)
+    session = get_retry_session()
+    response = session.get(INDEX_URL, timeout=15)
     response.raise_for_status()
     timestamps = response.json()['timestamps'][-104:]
     series_data = []
     
     for week in timestamps:
         week_url = f"https://www.smard.de/app/chart_data/4169/DE/4169_DE_hour_{week}.json?n={cache_buster}"
-        week_response = requests.get(week_url, timeout=15)
+        week_response = session.get(week_url, timeout=15)
         week_response.raise_for_status()
         series_data.extend(week_response.json()['series'])
         
