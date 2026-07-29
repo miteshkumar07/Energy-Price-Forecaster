@@ -9,6 +9,7 @@ import yfinance as yf
 import pandera.pandas as pa
 from pandera.pandas import Column, Check, DataFrameSchema
 from sqlalchemy import create_engine
+import time
 
 
 def fetch_dwd_spatial_weather(start_date, end_date):
@@ -34,8 +35,9 @@ def fetch_dwd_spatial_weather(start_date, end_date):
         "cloud_cover", "cloud_cover_low", "cloud_cover_mid", "cloud_cover_high", "snow_depth"
     ]
     vars_str = ",".join(hourly_vars)
-    today_str = datetime.now().strftime('%Y-%m-%d')
-    tomorrow_str = (datetime.now() + timedelta(days=1)).strftime('%Y-%m-%d')
+    now_berlin = pd.Timestamp.now(tz='Europe/Berlin')
+    today_str = now_berlin.strftime('%Y-%m-%d')
+    tomorrow_str = (now_berlin + pd.Timedelta(days=1)).strftime('%Y-%m-%d')
     
     combined_hubs_df = None
     
@@ -130,6 +132,7 @@ def fetch_smard_actual_price(start_date, end_date):
     Fetches strictly the actual Day-Ahead spot price from SMARD (Filter ID 4169).
     """
     print("Fetching SMARD Actual Day-Ahead Wholesale Prices...")
+    cache_buster = int(time.time())
     INDEX_URL = "https://www.smard.de/app/chart_data/4169/DE/index_hour.json"
     
     response = requests.get(INDEX_URL)
@@ -138,7 +141,7 @@ def fetch_smard_actual_price(start_date, end_date):
     series_data = []
     
     for week in timestamps:
-        week_url = f"https://www.smard.de/app/chart_data/4169/DE/4169_DE_hour_{week}.json"
+        week_url = f"https://www.smard.de/app/chart_data/4169/DE/4169_DE_hour_{week}.json?n={cache_buster}"
         week_response = requests.get(week_url)
         week_response.raise_for_status()
         series_data.extend(week_response.json()['series'])
@@ -154,8 +157,9 @@ def run_etl():
     print(" Starting ETL Pipeline...")
     
     # 1. Date Setup
-    end_dt = datetime.now() + timedelta(days=1)
-    start_dt = end_dt - timedelta(weeks=104)
+    now_berlin = pd.Timestamp.now(tz='Europe/Berlin')
+    end_dt = now_berlin + pd.Timedelta(days=1)
+    start_dt = end_dt - pd.Timedelta(weeks=104)
     start_str = start_dt.strftime('%Y-%m-%d')
     end_str = end_dt.strftime('%Y-%m-%d')
     

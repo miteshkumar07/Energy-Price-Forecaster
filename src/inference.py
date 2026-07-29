@@ -5,6 +5,8 @@ import shap
 import matplotlib.pyplot as plt
 from db_utils import get_db_engine, load_table
 from features import extract_features
+from google.cloud import storage
+import json
 
 def run_inference():
     print(" Starting Daily Inference Pipeline...")
@@ -70,7 +72,7 @@ def run_inference():
         'price_rolling_min_24': '24h Rolling Min Price (€)'
     }
 
-    X_explain = X_predict.tail(24).copy()
+    X_explain = X_predict.tail(24).copy().rename(columns=clean_feature_names)
     explainer = shap.TreeExplainer(model_50)
     shap_values = explainer(X_explain)
     
@@ -92,6 +94,30 @@ def run_inference():
     print("Uploading Forecast to Google Cloud...")
     engine = get_db_engine()
     forecast_df.to_sql('tomorrow_predictions', engine, if_exists='replace', index=False)
+    print("Uploading SHAP Visualizations to Google Cloud Bucket...")
+    try:
+        if "GCP_CREDENTIALS" in os.environ:
+            credentials_dict = json.loads(os.environ["GCP_CREDENTIALS"])
+            storage_client = storage.Client.from_service_account_info(credentials_dict)
+        else:
+            storage_client = storage.Client()
+        
+        bucket_name = "energy-visuals-mitesh" 
+        bucket = storage_client.bucket(bucket_name)
+        
+        # 1. Waterfall Plot Upload 
+        blob_waterfall = bucket.blob("shap_waterfall.png")
+        blob_waterfall.cache_control = 'no-cache, max-age=0' 
+        blob_waterfall.upload_from_filename("visualizations/shap_waterfall.png")
+        
+        # 2. Summary Plot Upload
+        blob_summary = bucket.blob("shap_summary.png")
+        blob_summary.cache_control = 'no-cache, max-age=0'
+        blob_summary.upload_from_filename("visualizations/shap_summary.png")
+        
+        print(" Successfully uploaded fresh SHAP images to GCP Bucket!")
+    except Exception as e:
+        print(f" Failed to upload images to bucket: {e}")
     print(" Inference Pipeline Complete! Dashboard is ready to serve.")
 
 if __name__ == "__main__":
