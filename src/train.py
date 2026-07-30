@@ -1,3 +1,4 @@
+import sys
 from sklearn.model_selection import train_test_split
 from features import extract_features
 import pandas as pd
@@ -11,9 +12,9 @@ from google.cloud import storage
 from etl import run_etl
 import json
 
-def run_training_pipeline():
+def run_training_pipeline(weeks_history=104):
     print(" Refreshing 2-Year Dataset for Model Retraining...")
-    run_etl(weeks_history=104)  # Fetch 2 years of historical data for training
+    run_etl(weeks_history=weeks_history)  # Fetch 2 years of historical data for training
     raw_df = load_table('historical_energy_data') 
     feat_extraced_df = extract_features(raw_df)
     cleaned_feat_df = feat_extraced_df.sort_values('datetime_berlin').reset_index(drop=True)
@@ -134,4 +135,5 @@ def run_training_pipeline():
     print(importances_50.head(10).to_string(index=False))
 
 if __name__ == "__main__":
-    run_training_pipeline()
+    weeks = 104 if "--full" in sys.argv else 2
+    run_training_pipeline(weeks_history=weeks)

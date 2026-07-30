@@ -63,7 +63,7 @@ def fetch_dwd_spatial_weather(start_date, end_date):
     for hub_name, coords in hubs.items():
         # 1. Fetch Historical DWD Runs up to today
         hist_url = (
-            f"https://historical-forecast-api.open-meteo.com/v1/forecast?"
+            f"https://archive-api.open-meteo.com/v1/archive?"
             f"latitude={coords['lat']}&longitude={coords['lon']}&"
             f"start_date={start_date}&end_date={today_str}&"
             f"hourly={vars_str}&timezone=Europe/Berlin"
@@ -174,7 +174,7 @@ def fetch_smard_actual_price(start_date, end_date, weeks_history=2):
     return smard_df
 
 
-def run_etl(weeks_history=2):
+def run_etl(weeks_history):
     print(" Starting ETL Pipeline...")
     
     # 1. Date Setup
@@ -185,7 +185,7 @@ def run_etl(weeks_history=2):
     end_str = end_dt.strftime('%Y-%m-%d')
     
     # 2. Extract Data from all sources
-    smard_df = fetch_smard_actual_price(start_str, end_str)
+    smard_df = fetch_smard_actual_price(start_str, end_str, weeks_history=weeks_history)
     weather_df = fetch_dwd_spatial_weather(start_str, end_str)
     fin_df = fetch_financial_data(start_str, end_str)
 
