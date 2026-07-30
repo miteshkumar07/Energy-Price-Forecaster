@@ -68,7 +68,7 @@ def fetch_dwd_spatial_weather(start_date, end_date):
             f"start_date={start_date}&end_date={today_str}&"
             f"hourly={vars_str}&timezone=Europe/Berlin"
         )
-        r_hist = session.get(hist_url, timeout=15)
+        r_hist = session.get(hist_url, timeout=60)
         r_hist.raise_for_status()
         data_hist = r_hist.json()['hourly']
         
@@ -83,7 +83,7 @@ def fetch_dwd_spatial_weather(start_date, end_date):
             f"start_date={tomorrow_str}&end_date={tomorrow_str}&"
             f"hourly={vars_str}&timezone=Europe/Berlin"
         )
-        r_live = session.get(live_url, timeout=15)
+        r_live = session.get(live_url, timeout=60)
         r_live.raise_for_status()
         data_live = r_live.json()['hourly']
         
@@ -146,7 +146,7 @@ def fetch_financial_data(start_date, end_date):
     return fin_df
 
 
-def fetch_smard_actual_price(start_date, end_date):
+def fetch_smard_actual_price(start_date, end_date, weeks_history=2):
     """
     Fetches strictly the actual Day-Ahead spot price from SMARD (Filter ID 4169).
     """
@@ -155,14 +155,15 @@ def fetch_smard_actual_price(start_date, end_date):
     INDEX_URL = "https://www.smard.de/app/chart_data/4169/DE/index_hour.json"
     
     session = get_retry_session()
-    response = session.get(INDEX_URL, timeout=15)
+    response = session.get(INDEX_URL, timeout=60)
     response.raise_for_status()
-    timestamps = response.json()['timestamps'][-104:]
+    weeks_to_fetch = min(weeks_history + 1, 104)
+    timestamps = response.json()['timestamps'][-weeks_to_fetch:]
     series_data = []
     
     for week in timestamps:
         week_url = f"https://www.smard.de/app/chart_data/4169/DE/4169_DE_hour_{week}.json?n={cache_buster}"
-        week_response = session.get(week_url, timeout=15)
+        week_response = session.get(week_url, timeout=60)
         week_response.raise_for_status()
         series_data.extend(week_response.json()['series'])
         
@@ -173,13 +174,13 @@ def fetch_smard_actual_price(start_date, end_date):
     return smard_df
 
 
-def run_etl():
+def run_etl(weeks_history=2):
     print(" Starting ETL Pipeline...")
     
     # 1. Date Setup
     now_berlin = pd.Timestamp.now(tz='Europe/Berlin')
     end_dt = now_berlin + pd.Timedelta(days=1)
-    start_dt = end_dt - pd.Timedelta(weeks=104)
+    start_dt = end_dt - pd.Timedelta(weeks=weeks_history)
     start_str = start_dt.strftime('%Y-%m-%d')
     end_str = end_dt.strftime('%Y-%m-%d')
     
@@ -255,7 +256,9 @@ def run_etl():
     rolling_90d = master_df.tail(90 * 24).reset_index(drop=True)
 
     print(" Pushing Data to Cloud Database...")
-    master_df.to_sql('historical_energy_data', engine, if_exists='replace', index=False)
+    if weeks_history>=52:
+        master_df.to_sql('historical_energy_data', engine, if_exists='replace', index=False)
+        print(" Updated 2-Year Historical Database Table for Training!")
     rolling_90d.to_sql('rolling_90d_energy_data', engine, if_exists='replace', index=False)
     print(" ETL Execution Finished Successfully!")
     
@@ -263,4 +266,7 @@ def run_etl():
 
 
 if __name__ == "__main__":
-    run_etl()
+    if "--full" in sys.argv:  # If full it will fetch 2 years of data
+        run_etl(weeks_history=104)
+    else:
+        run_etl(weeks_history=2)

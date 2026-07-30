@@ -8,9 +8,12 @@ import matplotlib.pyplot as plt
 import shap
 from db_utils import load_table
 from google.cloud import storage
+from etl import run_etl
 import json
 
 def run_training_pipeline():
+    print(" Refreshing 2-Year Dataset for Model Retraining...")
+    run_etl(weeks_history=104)  # Fetch 2 years of historical data for training
     raw_df = load_table('historical_energy_data') 
     feat_extraced_df = extract_features(raw_df)
     cleaned_feat_df = feat_extraced_df.sort_values('datetime_berlin').reset_index(drop=True)
