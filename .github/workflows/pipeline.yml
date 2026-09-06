@@ -2,9 +2,8 @@ name: Daily Energy Forecast Pipeline
 
 on:
   schedule:
-    # Runs at 06:00 UTC (08:00 AM CEST) AND 12:00 UTC (14:00 / 2:00 PM CEST)
-    - cron: '17 8,14 * * *'
-      timezone: 'Europe/Berlin'
+    # Runs at 06:17 UTC (08:17 AM CEST) AND 12:17 UTC (14:17 / 2:17 PM CEST)
+    - cron: '17 6,12 * * *'
   workflow_dispatch: # This allows you to manually click a "Run" button in GitHub
 
 jobs:
@@ -36,3 +35,7 @@ jobs:
           python -u src/etl.py
           python -u src/inference.py
           echo "✅ Daily pipeline finished successfully!"
+          
+      - name: Trigger Frontend Rebuild
+        run: |
+          curl -X POST -d {} "${{ secrets.FRONTEND_WEBHOOK_URL }}"
