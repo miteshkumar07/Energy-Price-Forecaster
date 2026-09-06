@@ -12,6 +12,9 @@ from sqlalchemy import create_engine
 import time
 from urllib3.util.retry import Retry
 from requests.adapters import HTTPAdapter
+from dotenv import load_dotenv
+
+load_dotenv()
 
 def get_retry_session():
     """Configures a requests session that automatically retries failed connections."""

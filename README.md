@@ -64,8 +64,8 @@ Given an array of 24 predicted hourly prices and a required machine run-time dur
 
 ### 1. Installation
 ```bash
-git clone https://github.com/miteshkumar07/The-Heavy-Machinery-Load-Shifter.git
-cd The-Heavy-Machinery-Load-Shifter
+git clone https://github.com/miteshkumar07/Energy-Price-Forecaster.git
+cd Energy-Price-Forecaster
 conda create -n pro python=3.12
 conda activate pro
 pip install -r requirements.txt

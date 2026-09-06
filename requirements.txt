@@ -12,3 +12,4 @@ plotly
 holidays
 python-dotenv
 google-cloud-storage
+numpy<2.5.0
