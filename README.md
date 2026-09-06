@@ -58,6 +58,22 @@ energy-price-forecaster/
 ### The Heavy Machinery Optimizer
 Given an array of 24 predicted hourly prices and a required machine run-time duration, the custom optimizer calculates the cheapest route for operations. It uses a rolling-window summation algorithm to find the optimal contiguous block of time within a strictly constrained legal shift mask, dynamically calculating the final financial estimates against exact industrial grid rates.
 
+## 📊 Model Performance
+
+The forecasting engine uses a strictly honest, non-leaky pipeline evaluated through **90-day Walk-Forward Validation**. All weather variables are drawn from Day-Ahead Forecasts (not realized weather) and the validation sets are structurally blinded to prevent look-ahead bias.
+
+### Final Production Metric
+**90-Day Walk-Forward MAE: 20.79 €/MWh**
+
+### Baseline Model Shootout
+Below is the comparison of base models trained on the exact same chronological split before tuning:
+
+| Model | MAE (€/MWh) | R² Score | Train Time (s) |
+|---|---|---|---|
+| **LightGBM** | 25.08 | 0.6938 | 0.47 |
+| **XGBoost** | 25.98 | 0.6722 | 0.21 |
+| **Random Forest** | 35.80 | 0.4801 | 2.82 |
+
 ---
 
 ## 🚀 Getting Started

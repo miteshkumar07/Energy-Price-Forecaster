@@ -25,8 +25,7 @@ def run_walk_forward_backtest(days_to_test=90):
        'ind_demand_apparent_temperature', 'ind_demand_temperature_2m', 'ind_demand_relative_humidity_2m',
        'HDD', 'CDD',
        'Natural_Gas_Price', 'Carbon_Proxy_Price', 'Oil_Proxy_Price',
-       'Day', 'Hour', 'Weekday', 'Is_Weekend', 'Is_Holiday', 
-       'hour_sin', 'hour_cos', 'weekday_sin', 'weekday_cos', 
+       'Hour', 'Weekday', 'Is_Weekend', 'Is_Holiday', 
        'price_lag_24', 'price_lag_48', 'price_lag_168',
        'price_rolling_mean_24', 'price_rolling_max_24', 'price_rolling_min_24'
     ]
@@ -38,11 +37,11 @@ def run_walk_forward_backtest(days_to_test=90):
     print(f" Starting Walk-Forward Backtest for the last {days_to_test} days...")
 
     model_10 = lgb.LGBMRegressor(objective='quantile', alpha=0.10, n_estimators=1000, learning_rate=0.02, num_leaves=32, min_child_samples=100,
-        max_depth=6, subsample=0.7, colsample_bytree=0.8, random_state=42, n_jobs=-1, verbose=-1)
+        max_depth=6, subsample=0.7, subsample_freq=1, colsample_bytree=0.8, random_state=42, n_jobs=-1, verbose=-1)
     model_50 = lgb.LGBMRegressor(objective='quantile', alpha=0.50, n_estimators=1000, learning_rate=0.02, num_leaves=32, min_child_samples=100,
-        max_depth=6, subsample=0.7, colsample_bytree=0.8, random_state=42, n_jobs=-1, verbose=-1)
+        max_depth=6, subsample=0.7, subsample_freq=1, colsample_bytree=0.8, random_state=42, n_jobs=-1, verbose=-1)
     model_90 = lgb.LGBMRegressor(objective='quantile', alpha=0.90, n_estimators=1000, learning_rate=0.02, num_leaves=32, min_child_samples=100,
-        max_depth=6, subsample=0.7, colsample_bytree=0.8, random_state=42, n_jobs=-1, verbose=-1)
+        max_depth=6, subsample=0.7, subsample_freq=1, colsample_bytree=0.8, random_state=42, n_jobs=-1, verbose=-1)
 
     all_predictions_10, all_predictions_50, all_predictions_90, all_actuals, plot_timestamps = [], [], [], [], []
 
@@ -50,15 +49,21 @@ def run_walk_forward_backtest(days_to_test=90):
         train_mask = df['date_only'] < current_date
         test_mask = df['date_only'] == current_date
         
-        X_train, y_train = df[train_mask][feature_cols], df[train_mask][target_col]
+        X_train_full, y_train_full = df[train_mask][feature_cols], df[train_mask][target_col]
         X_test, y_test = df[test_mask][feature_cols], df[test_mask][target_col]
         
         if X_test.empty:
             continue
             
-        model_10.fit(X_train, y_train, eval_X=X_test, eval_y=y_test, callbacks=[lgb.early_stopping(50, verbose=False)])
-        model_50.fit(X_train, y_train, eval_X=X_test, eval_y=y_test, callbacks=[lgb.early_stopping(50, verbose=False)])
-        model_90.fit(X_train, y_train, eval_X=X_test, eval_y=y_test, callbacks=[lgb.early_stopping(50, verbose=False)])
+        val_size = 14 * 24
+        X_train = X_train_full.iloc[:-val_size]
+        y_train = y_train_full.iloc[:-val_size]
+        X_val = X_train_full.iloc[-val_size:]
+        y_val = y_train_full.iloc[-val_size:]
+            
+        model_10.fit(X_train, y_train, eval_X=X_val, eval_y=y_val, callbacks=[lgb.early_stopping(50, verbose=False)])
+        model_50.fit(X_train, y_train, eval_X=X_val, eval_y=y_val, callbacks=[lgb.early_stopping(50, verbose=False)])
+        model_90.fit(X_train, y_train, eval_X=X_val, eval_y=y_val, callbacks=[lgb.early_stopping(50, verbose=False)])
 
         all_predictions_10.extend(model_10.predict(X_test))
         all_predictions_50.extend(model_50.predict(X_test))

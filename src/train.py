@@ -27,17 +27,24 @@ def run_training_pipeline(weeks_history=104):
        'ind_demand_apparent_temperature', 'ind_demand_temperature_2m', 'ind_demand_relative_humidity_2m',
        'HDD', 'CDD',
        'Natural_Gas_Price', 'Carbon_Proxy_Price', 'Oil_Proxy_Price',
-       'Day', 'Hour', 'Weekday', 'Is_Weekend', 'Is_Holiday', 
-       'hour_sin', 'hour_cos', 'weekday_sin', 'weekday_cos',
+       'Hour', 'Weekday', 'Is_Weekend', 'Is_Holiday', 
        'price_lag_24', 'price_lag_48', 'price_lag_168',
        'price_rolling_mean_24', 'price_rolling_max_24', 'price_rolling_min_24'
     ]
     target_col = 'Price (€/MWh)'
     
     cleaned_feat_df = cleaned_feat_df.dropna(subset=[target_col]).reset_index(drop=True)
-    X_train, X_test, y_train, y_test = train_test_split(cleaned_feat_df[feature_cols], cleaned_feat_df[target_col], test_size=0.25, shuffle=False)
+    X_train_full, X_test, y_train_full, y_test = train_test_split(cleaned_feat_df[feature_cols], cleaned_feat_df[target_col], test_size=0.25, shuffle=False)
+    
+    # Carve a blind validation set from the end of the training data
+    val_size = 14 * 24  # 14 days
+    X_train = X_train_full.iloc[:-val_size]
+    y_train = y_train_full.iloc[:-val_size]
+    X_val = X_train_full.iloc[-val_size:]
+    y_val = y_train_full.iloc[-val_size:]
     
     print(f"Training set rows: {len(X_train)}")
+    print(f"Validation set rows: {len(X_val)}")
     print(f"Testing set rows: {len(X_test)}")
 
     #### Baseline #########
@@ -50,22 +57,22 @@ def run_training_pipeline(weeks_history=104):
     # 10% condidence bounds
     model_10 = lgb.LGBMRegressor(
         objective='quantile', alpha=0.10, n_estimators=1000, learning_rate=0.02, num_leaves=32, min_child_samples=100,
-        max_depth=6, subsample=0.7, colsample_bytree=0.8, random_state=42, n_jobs=-1, verbose=-1
+        max_depth=6, subsample=0.7, subsample_freq=1, colsample_bytree=0.8, random_state=42, n_jobs=-1, verbose=-1
     )
     # 50% confidence bounds
     model_50 = lgb.LGBMRegressor(
         objective='quantile', alpha=0.50, n_estimators=1000, learning_rate=0.02, num_leaves=32, min_child_samples=100,
-        max_depth=6, subsample=0.7, colsample_bytree=0.8, random_state=42, n_jobs=-1, verbose=-1
+        max_depth=6, subsample=0.7, subsample_freq=1, colsample_bytree=0.8, random_state=42, n_jobs=-1, verbose=-1
     )
     # 90% confidence bounds
     model_90 = lgb.LGBMRegressor(
         objective='quantile', alpha=0.90, n_estimators=1000, learning_rate=0.02, num_leaves=32, min_child_samples=100,
-        max_depth=6, subsample=0.7, colsample_bytree=0.8, random_state=42, n_jobs=-1, verbose=-1
+        max_depth=6, subsample=0.7, subsample_freq=1, colsample_bytree=0.8, random_state=42, n_jobs=-1, verbose=-1
     )
 
-    model_10.fit(X_train, y_train, eval_X=X_test, eval_y=y_test, callbacks=[lgb.early_stopping(50, verbose=False)])
-    model_50.fit(X_train, y_train, eval_X=X_test, eval_y=y_test, callbacks=[lgb.early_stopping(50, verbose=False)])
-    model_90.fit(X_train, y_train, eval_X=X_test, eval_y=y_test, callbacks=[lgb.early_stopping(50, verbose=False)])
+    model_10.fit(X_train, y_train, eval_X=X_val, eval_y=y_val, callbacks=[lgb.early_stopping(50, verbose=False)])
+    model_50.fit(X_train, y_train, eval_X=X_val, eval_y=y_val, callbacks=[lgb.early_stopping(50, verbose=False)])
+    model_90.fit(X_train, y_train, eval_X=X_val, eval_y=y_val, callbacks=[lgb.early_stopping(50, verbose=False)])
 
     # ==========================================
     #  EXPLAINABLE AI (SHAP) INTEGRATION

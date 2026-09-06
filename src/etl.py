@@ -66,7 +66,7 @@ def fetch_dwd_spatial_weather(start_date, end_date):
     for hub_name, coords in hubs.items():
         # 1. Fetch Historical DWD Runs up to today
         hist_url = (
-            f"https://archive-api.open-meteo.com/v1/archive?"
+            f"https://historical-forecast-api.open-meteo.com/v1/forecast?"
             f"latitude={coords['lat']}&longitude={coords['lon']}&"
             f"start_date={start_date}&end_date={today_str}&"
             f"hourly={vars_str}&timezone=Europe/Berlin"

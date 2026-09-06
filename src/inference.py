@@ -22,8 +22,7 @@ def run_inference():
        'ind_demand_apparent_temperature', 'ind_demand_temperature_2m', 'ind_demand_relative_humidity_2m',
        'HDD', 'CDD',
        'Natural_Gas_Price', 'Carbon_Proxy_Price', 'Oil_Proxy_Price',
-       'Day', 'Hour', 'Weekday', 'Is_Weekend', 'Is_Holiday', 
-       'hour_sin', 'hour_cos', 'weekday_sin', 'weekday_cos', 
+       'Hour', 'Weekday', 'Is_Weekend', 'Is_Holiday', 
        'price_lag_24', 'price_lag_48', 'price_lag_168',
        'price_rolling_mean_24', 'price_rolling_max_24', 'price_rolling_min_24'
     ]

@@ -7,7 +7,7 @@ venv/
 env/
 .env
 visualizations/
-src/compare_models.py
+scratch
 .vscode/
 extend.txt
 image copy.png

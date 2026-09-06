@@ -4,16 +4,13 @@ import numpy as np
 
 def extract_features(df):
     df = df.copy()
-    df = df.sort_values('datetime_berlin').reset_index(drop=True)
-    df['Day'] = df['datetime_berlin'].dt.day
+    df = df.set_index('datetime_utc')
+    df = df[~df.index.duplicated(keep='last')]
+    df = df.resample('1h').asfreq()
+    df['datetime_berlin'] = df.index.tz_convert('Europe/Berlin')
+    df = df.reset_index()
     df['Hour'] = df['datetime_berlin'].dt.hour
     df['Weekday'] = df['datetime_berlin'].dt.weekday
-
-    # Cyclical Time Transformations (maps 23:00 close to 00:00)
-    df['hour_sin'] = np.sin(2 * np.pi * df['Hour'] / 24)
-    df['hour_cos'] = np.cos(2 * np.pi * df['Hour'] / 24)
-    df['weekday_sin'] = np.sin(2 * np.pi * df['Weekday'] / 7)
-    df['weekday_cos'] = np.cos(2 * np.pi * df['Weekday'] / 7)
 
     # German public holidays
     germany_holidays = holidays.Germany()
